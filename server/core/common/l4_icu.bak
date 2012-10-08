@@ -1,0 +1,235 @@
+#include <l4/re/c/util/cap_alloc.h>
+#include <l4/sys/debugger.h>
+#include <l4/sys/kdebug.h>
+#include <l4/re/env.h>
+#include <l4/sys/ipc.h>
+#include <l4/sys/factory.h>
+#include <l4/sys/thread.h>
+#include <l4/sys/irq.h>
+#include <l4/sys/err.h>
+#include <l4/util/util.h>
+
+#include <config.h>
+#include <bitop.h>
+#include <irqs.h>
+#include <l4/irqs.h>
+#include <l4/processor.h>
+#include <l4/thread.h>
+
+#include <string.h>
+#include <stdio.h>
+
+#define CONFIG_PRIORITY_BASE 2
+
+#define L4ERTL_TIMER_HW_IRQ 37		//real-view versatile pbx cortex A9 board
+
+unsigned long irq_bits[IRQ_NR];
+l4_cap_idx_t irq_caps[IRQ_NR];
+l4_cap_idx_t irq_thread_caps[IRQ_NR];
+unsigned long irq_nums[IRQ_NR];
+unsigned long irq_prios[IRQ_NR];
+
+//----------------//
+//  assert_irq    //
+//----------------//
+static void assert_irq(unsigned int irq) {
+#ifdef L4_SYS_TIMER
+  if(irq != L4_TIMER_IRQ) {
+#else
+  if(irq != L4ERTL_TIMER_HW_IRQ) {
+#endif // L4_SYS_TIMER
+
+     printf("IRQ No. %d\n is out of Available IRQ No. %d\n", irq, AVAILABLE_IRQS);
+     enter_kdebug("Exception");
+  }
+}
+
+//---------------//
+// enable_l4_irq //
+//------------- -//
+
+static void enable_l4_irq (unsigned int irq) {
+  int flags, error;
+  l4_msgtag_t tag;
+
+  assert_irq(irq);
+
+  hw_save_flags_and_cli(flags);
+
+  irq_bits[irq] = 1;
+
+  //printf("%s %d\n", __func__, irq);
+  tag = l4_irq_attach(irq_caps[irq], irq_nums[irq], vcpu_cap);
+  error = l4_msgtag_has_error(tag);
+
+  if(error)
+    printf("error %s\n", l4sys_errtostr(error));
+
+  hw_restore_flags (flags);
+}
+
+//-----------------//
+// disable_l4_irq  //
+//----------------//
+
+static void disable_l4_irq (unsigned int irq) {
+  int flags;
+
+  assert_irq(irq);
+
+  hw_save_flags_and_cli(flags);
+
+  irq_bits[irq] = 0;
+  //printf("%s irq %d\n", __func__, irq);
+  l4_irq_detach(irq_caps[irq]);
+
+  hw_restore_flags (flags);
+}
+
+//----------------//
+//  ack_l4_irq    //
+//----------------//
+
+static void ack_l4_irq(unsigned int irq) {
+  //printf("%s: %d\n", __func__, irq);
+}
+
+//----------------//
+//  end_l4_irq    //
+//----------------//
+
+static void end_l4_irq(unsigned int irq) {
+  //printf("%s: %d\n", __func__, irq);
+}
+
+static void timer_irq_thread(void *data)
+{
+#ifdef L4_SYS_TIMER
+   int error;
+   l4_umword_t label;
+   duration_t usecs;
+   l4_timeout_t to;
+   l4_kernel_info_t *kip = l4re_kip();
+   l4_utcb_t *u = l4_utcb();
+
+   printf("Starting timer IRQ thread.\n");
+
+   while(1) {
+     if ((error = l4_msgtag_has_error(l4_ipc_wait(l4_utcb(), &label, L4_IPC_NEVER))) >  0) {
+       printf("Timer receipt failed with error 0x%x error %s.\n", error, l4sys_errtostr(error));
+       enter_kdebug("timer");
+     }
+
+#ifdef ARCH_arm
+     usecs = ((duration_t) (l4_utcb_mr()->mr[0]));
+     //printf("nanoseconds XXXX 0x%x\n", usecs);
+#else
+     usecs = ((((duration_t)(l4_utcb_mr()->mr[0])) << 32) + l4_utcb_mr()->mr[1]);
+     //printf("nanoseconds %lld\n", usecs);
+#endif   // ARCH_arm
+     //l4_rcv_timeout(l4_timeout_abs_u((kip->clock + usecs), 1, u), &to);
+     //l4_ipc_receive(L4_INVALID_CAP, u, to);
+     l4_usleep(usecs);
+
+     if ((error = l4_msgtag_has_error(l4_irq_trigger(irq_caps[L4_TIMER_IRQ]))) > 0)
+       printf("IRQ timer trigger failed %s\n", l4sys_errtostr(error));
+  }
+#else
+   l4_msgtag_t tag;
+   l4_cap_idx_t timer_irq_cap = l4re_util_cap_alloc();
+   l4_cap_idx_t thread_cap = pthread_getl4cap(pthread_self());
+
+   printf("Starting timer IRQ thread.\n");
+   if (l4io_request_irq(L4ERTL_TIMER_IRQ, timer_irq_cap) < 0) {
+     printf("Failed to get irq.\n");
+     enter_kdebug("IRQ Request Error.\n");
+   }
+
+   while(1) {
+     tag = l4_irq_receive(timer_irq_cap, L4_IPC_NEVER);
+
+     if (l4_ipc_error(tag, l4_utcb())) {
+       printf("[KEYP] Error: Receive irq failed\n");
+        continue;
+     }
+
+     if ((error = l4_msgtag_has_error(l4_irq_trigger(irq_caps[L4_TIMER_IRQ]))) > 0)
+     printf("IRQ timer trigger failed %s\n", l4sys_errtostr(error));
+
+  }
+#endif	//L4_SYS_TIMER
+
+} /* timer_irq_thread */
+
+
+static int l4_startup_timer(void) {
+  char name[15];
+  int cpu = 0;
+  l4_utcb_t * timer_thread;
+
+#ifdef L4_SYS_TIMER
+  sprintf(name, "timer.i%d", L4_TIMER_IRQ);
+#else
+  sprintf(name, "timer.i%d", L4ERTL_TIMER_HW_IRQ);
+#endif
+
+  timer_thread = l4ertl_thread_create
+                 (timer_irq_thread,            /* thread function */
+                 cpu,                         /* cpu */
+                 NULL,                        /* stack */
+                 NULL, 0,                     /* data */
+                 irq_prios[L4_TIMER_IRQ] +  CONFIG_PRIORITY_BASE,/* prio */
+                 0,                           /* vcpup */
+                 name,                        /* name */
+                 L4_TIMER_IRQ);               /* irq */
+
+  if (!timer_thread) {
+    printf("Error creating timer thread!");
+    return 0;
+  }
+
+  enable_l4_irq(L4_TIMER_IRQ);
+
+  l4_thread_switch(irq_thread_caps[L4_TIMER_IRQ]);
+
+  return 1;
+}
+
+void init_l4_icu(void);
+void init_l4_icu (void) {
+  int irq;
+  
+  for (irq = 0; irq < IRQ_NR; irq ++) {
+
+    irq_bits[irq] = 0; //disable all irqs initially
+
+    hw_irq_ctrl [irq] = (hw_irq_ctrl_t){
+      .enable = enable_l4_irq,
+      .disable = disable_l4_irq,
+      .ack = disable_l4_irq,
+      .end = enable_l4_irq,
+    };
+
+    if (l4_error(l4_factory_create_irq(l4re_env()->factory, irq_caps[irq])) > 0) {
+      printf("Failed to create irq capability in the Line %d, Function: %s.\n", __LINE__, __func__);
+      enter_kdebug("IRQ creating failed");
+    }
+
+  }
+
+#ifdef L4_SYS_TIMER
+   // timer irq
+   irq_nums[L4_TIMER_IRQ] = 0;
+   irq_prios[L4_TIMER_IRQ] = 0;  //if we have real hw irqs we need to fix this priority setting
+#else
+   irq_nums[L4ERTL_TIMER_HW_IRQ] = L4ERTL_TIMER_HW_IRQ;
+   irq_prios[L4ERTL_TIMER_HW_IRQ] = 0;  //if we have real hw irqs we need to fix this priority setting
+#endif  // L4_SYS_TIMER
+
+   if(!l4_startup_timer()) {
+     printf("Failed to create TIMER thread *.\n");
+     enter_kdebug("TIMER Failed");
+   }
+
+  /* Missing other real Hardware IRQs */
+}

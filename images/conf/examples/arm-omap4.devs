@@ -1,0 +1,129 @@
+# vim:set ft=ioconfig:
+#
+# (c) 2008-2009 Technische Universität Dresden
+# This file is part of TUD:OS and distributed under the terms of the
+# GNU General Public License 2.
+# Please see the COPYING-GPL-2 file for details.
+#
+
+# OMAP4 (PandaBoard)
+
+hw-root
+{
+  CM1 => new Device()
+  {
+    .hid = "CM1 Instance Summary";
+    new-res Mmio(0x4a004000 .. 0x4a004fff);
+  }
+
+  CM2 => new Device()
+  {
+    .hid = "CM2 Instance Summary";
+    new-res Mmio(0x4a008000 .. 0x4a009fff);
+  }
+
+  SCRM => new Device()
+  {
+    .hid = "SCRM Instance Summary";
+    new-res Mmio(0x4a30a000 .. 0x4a30afff);
+  }
+
+  WKUPCM => new Device()
+  {
+    .hid = "WKUP_CM Register Summary";
+    new-res Mmio(0x4a306000 .. 0x4a307fff);
+  }
+
+  SR_MPU => new Device()
+  {
+    .hid = "SR_MPU Register Summary";
+    new-res Mmio(0x4a0d9000 .. 0x4a0d9fff);
+  }
+
+  SR_IVA => new Device()
+  {
+    .hid = "SR_IVA Register Summary";
+    new-res Mmio(0x4a0db000 .. 0x4a0dbfff);
+  }
+
+  SR_CORE => new Device()
+  {
+    .hid = "SR_CORE Register Summary";
+    new-res Mmio(0x4a0dd000 .. 0x4a0ddfff);
+  }
+
+#general-purpose timers
+  GPTIMER1 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer1";
+    new-res Mmio(0x4a318000 .. 0x4a318fff);
+    new-res Irq(69);
+  }
+  GPTIMER2 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer2";
+    new-res Mmio(0x48032000 .. 0x48032fff);
+    new-res Irq(70);
+  }
+  GPTIMER3 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer3";
+    new-res Mmio(0x48034000 .. 0x48034fff);
+    new-res Irq(71);
+  }
+  GPTIMER4 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer4";
+    new-res Mmio(0x48036000 .. 0x48036fff);
+    new-res Irq(72);
+  }
+  GPTIMER5 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer5";
+    new-res Mmio(0x40138000 .. 0x40138fff);
+    new-res Irq(73);
+  }
+  GPTIMER6 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer6";
+    new-res Mmio(0x4013a000 .. 0x4013afff);
+    new-res Irq(74);
+  }
+  GPTIMER7 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer7";
+    new-res Mmio(0x4013c000 .. 0x4013cfff);
+    new-res Irq(75);
+  }
+  GPTIMER8 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer8";
+    new-res Mmio(0x4013e000 .. 0x4013efff);
+    new-res Irq(76);
+  }
+  GPTIMER9 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer9";
+    new-res Mmio(0x4803e000 .. 0x4803efff);
+    new-res Irq(77);
+  }
+  GPTIMER10 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer10";
+    new-res Mmio(0x48086000 .. 0x48086fff);
+    new-res Irq(78);
+  }
+  GPTIMER11 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer11";
+    new-res Mmio(0x48088000 .. 0x48088fff);
+    new-res Irq(79);
+  }
+  GPTIMER12 => new Device()
+  {
+    .hid = "OMAP4 PandaBoard gptimer12";
+    new-res Mmio(0x4a320000 .. 0x4a320fff);
+    new-res Irq(127);
+  }
+
+}

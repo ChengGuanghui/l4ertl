@@ -1,0 +1,11 @@
+entry l4ertl_omap4
+kernel fiasco -serial_esc
+roottask moe rom/l4ertl_omap4.cfg
+module arm-omap4.devs
+module l4ertl_omap4.io
+module l4ertl_omap4.cfg
+module l4re
+module ned
+module io
+module l4ertl
+module error_test

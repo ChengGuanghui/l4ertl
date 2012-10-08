@@ -1,0 +1,33 @@
+1)Please be careful that the timer of current implementation uses microseconds (usecs) but not nanoseconds. But the formal implementation should be based on nanoseconds. When every application could work i could change to nanoseconds.
+
+
+2, Workable Demo:
+	1)pthread_create.c
+	2)pthread_join.c
+	3)pthread_test.c
+	4)pthread_periodics.c
+	5)pthread_mutex.c
+	6)pthread_cond.c
+	7)pthread_signal.c		(notyet)
+	8)pthread_setprioceiling.c	(not yet)
+	9)hello_world.c
+	10)strerror.c
+	11)testargs.c			(not yet, but it needs the configuration about l4)
+	12)time.c
+	13)timers.c			(not yet)
+	14)timer_error.c		(not yet)
+	15)timer_error2.c		(not yet)
+
+3, For the current implementation
+	i think it is better to use the physical timer but not l4_sleep. Because physical timer could generate much more precisely. this should be done tonight or tommorrow morning quickly.  I can't wait much longer. 
+
+
+Board:
+      ARM Versatile Express for Cortex-A9   qemu-system-arm -M vexpress-a9. Actually i can't find good datasheet to describe this board carefully and i have to check the Linux and qemu code to find out what the IRQ is and what the physical memory is.
+      http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0465d/index.html
+
+      For the ARM Versatile Express for Cortex-A9 board, stragely i can't get the timer irq all the time. I checked the register there is should irq happended but i can't get it from my program. There are several dual timers for this board: timer01 and timer23, every group shares the same irq but different memory. I tried both but have no good news. Maybe it is caused by the kernel porting problem i decided to give up this board and try another one, Pandaboard.
+
+      Pandaboard. TI Dual Core board of Cortex A9.
+
+

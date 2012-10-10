@@ -4,7 +4,7 @@ LD=$(PREFIX)ld
 OBJCOPY=$(PREFIX)objcopy
 RM=rm
 
-objs=timers.o
+objs=pthread_create.o
 startobj=/home/cheng/TUDOS/Src/l4re-snapshot-2011102517/src/l4/pkg/l4ertl/server/crt0/start.o
 
 userent=/home/cheng/TUDOS/Src/l4re-snapshot-2011102517/src/l4/pkg/l4ertl/server/ulibc/user_point_entry.o

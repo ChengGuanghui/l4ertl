@@ -283,12 +283,10 @@ int init_signals (void) {
 
 void do_do_signals(int signal, unsigned int func) {
   l4_msgtag_t tag;
-  printf("hoho do_do_signals.\n");
   //pthread_to_vcpu(l4ertl_vcpu, current_thread);
   current_thread->signal_kregs.ARM_pc = __builtin_return_address(0);
   current_thread->signal_kregs.ARM_cpsr = l4ertl_vcpu->saved_state;
-  printf("signal before sp 0x%x\n", (unsigned long)(current_thread->signal_kregs.ARM_sp));
-  printf("signal ip 0x%x\n", (unsigned long)(current_thread->signal_kregs.ARM_pc));
+  //printf("signal ip 0x%x\n", (unsigned long)(current_thread->signal_kregs.ARM_pc));
   l4ertl_vcpu->r.r[0] = (unsigned long)signal;
   l4ertl_vcpu->r.lr = 0xFEDCBA00;
   l4ertl_vcpu->r.ip = func;
@@ -302,7 +300,6 @@ void do_do_signals(int signal, unsigned int func) {
              | L4_VCPU_F_PAGE_FAULTS
              | L4_VCPU_F_FPU_ENABLED
              | L4_VCPU_F_HANDLING_SIGNAL;
-  printf("switch to the user space.\n");
   tag = l4_thread_vcpu_resume_start();
   l4_thread_vcpu_resume_commit(L4_INVALID_CAP, tag);
 }
@@ -336,137 +333,32 @@ void do_signals (void) {
 
   old_sigmask = current_thread -> sigmask.sig;
 
-  //current_thread->signal_kregs.ARM_lr = 0;
   for (signal = 0; signal < NRSIGNALS && sigpend; signal ++) {
     current_thread -> sigmask.sig = old_sigmask | signal_table [signal].sa_mask.sig | (1 << signal);
     if ((sigpend & 1)) {
-      hw_sti ();				//I don't know why it is triggered in this place  ??????????????????????????
+      hw_sti ();
       // Excuting the handler associated with this signal
-      printf("sa_sigaction 0x%x\n", (unsigned long)signal_table [signal].sa_sigaction);
-
-#if 0
-      if ((unsigned long)signal_table [signal].sa_sigaction > 
-	  (unsigned long)&_stext && 
-	  (unsigned long)signal_table [signal].sa_sigaction < 
-	  (unsigned long)&_etext) {
+      //if ((unsigned long)signal_table [signal].sa_sigaction > 
+      //  (unsigned long)&_stext && 
+      //  (unsigned long)signal_table [signal].sa_sigaction < 
+      // (unsigned long)&_etext) {
 	// internal handler
 	if (signal_table [signal].sa_sigaction)
 	  signal_table [signal].sa_sigaction (signal, 
 					      (siginfo_t *) p1, (void *) p2);
-      } else {
+      //} else {
 	// external handler
-	if (signal_table [signal].sa_sigaction) {
-	  CALL_SIGNAL_HANDLER 
-	    (signal_table [signal].sa_sigaction, signal, 
-	     (siginfo_t *)p1, (void *)p2);
-	}
-      }
-#else
-	if (signal_table [signal].sa_handler) {
-           asm volatile ("mov %0, sp":"=r"((current_thread->signal_kregs.ARM_sp)));
-           asm volatile ("mov %0, r0":"=r"((current_thread->signal_kregs.ARM_r0)));
-           asm volatile ("mov %0, r1":"=r"((current_thread->signal_kregs.ARM_r1)));
-           asm volatile ("mov %0, r2":"=r"((current_thread->signal_kregs.ARM_r2)));
-           asm volatile ("mov %0, r3":"=r"((current_thread->signal_kregs.ARM_r3)));
-           asm volatile ("mov %0, r4":"=r"((current_thread->signal_kregs.ARM_r4)));
-           asm volatile ("mov %0, r5":"=r"((current_thread->signal_kregs.ARM_r5)));
-           asm volatile ("mov %0, r6":"=r"((current_thread->signal_kregs.ARM_r6)));
-           asm volatile ("mov %0, r7":"=r"((current_thread->signal_kregs.ARM_r7)));
-           asm volatile ("mov %0, r8":"=r"((current_thread->signal_kregs.ARM_r8)));
-           asm volatile ("mov %0, r9":"=r"((current_thread->signal_kregs.ARM_r9)));
-           asm volatile ("mov %0, r10":"=r"((current_thread->signal_kregs.ARM_r10)));
-           asm volatile ("mov %0, r11":"=r"((current_thread->signal_kregs.ARM_r11)));
-           asm volatile ("mov %0, r12":"=r"((current_thread->signal_kregs.ARM_r12)));
-           //asm volatile ("mov %0, lr":"=r"((current_thread->signal_kregs.ARM_lr)));
-           current_thread->signal_kregs.ARM_lr = __builtin_return_address(0);
-           //printf("current_thread->signal_kregs.ARM_lr 0x%x\n", current_thread->signal_kregs.ARM_lr);
-/*
-           printf("sp 0x%x\n", current_thread->signal_kregs.ARM_sp);
-           printf("r0 0x%x\n", current_thread->signal_kregs.ARM_r0);
-           printf("r1 0x%x\n", current_thread->signal_kregs.ARM_r1);
-           printf("r2 0x%x\n", current_thread->signal_kregs.ARM_r2);
-           printf("r3 0x%x\n", current_thread->signal_kregs.ARM_r3);
-           printf("r4 0x%x\n", current_thread->signal_kregs.ARM_r4);
-           printf("r5 0x%x\n", current_thread->signal_kregs.ARM_r5);
-           printf("r6 0x%x\n", current_thread->signal_kregs.ARM_r6);
-           printf("r7 0x%x\n", current_thread->signal_kregs.ARM_r7);
-           printf("r8 0x%x\n", current_thread->signal_kregs.ARM_r8);
-           printf("r9 0x%x\n", current_thread->signal_kregs.ARM_r9);
-           printf("r10 0x%x\n", current_thread->signal_kregs.ARM_r10);
-           printf("r11 0x%x\n", current_thread->signal_kregs.ARM_r11);
-           printf("r12 0x%x\n", current_thread->signal_kregs.ARM_r12);
-           printf("lr 0x%x\n", current_thread->signal_kregs.ARM_lr);
-           printf("before sp 0x%x lr real 0x%x fault 0x%x\n", current_thread->signal_kregs.ARM_sp, __builtin_return_address(0), current_thread->signal_kregs.ARM_lr);
-*/           //printf("before SP 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", current_thread->signal_kregs.ARM_sp, *((unsigned long *)(current_thread->signal_kregs.ARM_sp)), *((unsigned long *)(current_thread->signal_kregs.ARM_sp + 4)), *((unsigned long *)(current_thread->signal_kregs.ARM_sp + 8)), *((unsigned long *)(current_thread->signal_kregs.ARM_sp + 12)), *((unsigned long *)(current_thread->signal_kregs.ARM_sp + 16)), *((unsigned long *)(current_thread->signal_kregs.ARM_sp + 20)), *((unsigned long *)(current_thread->signal_kregs.ARM_sp + 24)), *((unsigned long *)(current_thread->signal_kregs.ARM_sp + 28)));
-           do_do_signals(signal, (unsigned long)(signal_table [signal].sa_handler));
-	   printf("hoho.\n");
-           l4ertl_vcpu->saved_state = l4ertl_vcpu->saved_state & ~L4_VCPU_F_HANDLING_SIGNAL;
-           //l4ertl_vcpu->saved_state = l4ertl_vcpu->saved_state | L4_VCPU_F_IRQ;
-           if(l4ertl_vcpu->saved_state & L4_VCPU_F_HANDLING_SIGNAL)
-               printf("SIGNAL is in handling 21.\n");
-             else
-               printf("SIGNAL is in handling 22.\n");
-
-  //printf("original lr 0x%x\n", current_thread->signal_kregs.ARM_lr);
-	   //printf("hihi.\n");
-           }
-     //printf("haha.\n");
-     //while(1);
-
-#endif
+      //	if (signal_table [signal].sa_sigaction) {
+      //	  CALL_SIGNAL_HANDLER 
+      //	    (signal_table [signal].sa_sigaction, signal, 
+      //	     (siginfo_t *)p1, (void *)p2);
+      //	}
+      //     }
       hw_cli ();
-      printf("hphp.\n");
     }
     sigpend >>= 1;
   }
 
-  //printf("1 why\n");
-  //printf("3 why\n");
-  //printf("4 why\n");
   current_thread -> sigmask.sig = old_sigmask;
-  printf("2 why\n");
   hw_restore_flags (flags);
-/*  unsigned int sp;
-  asm volatile ("mov %0, sp":"=r"(sp));
-  printf("lr 0x%x\n", __builtin_return_address(0));
-*/
-  if(!(l4ertl_vcpu->saved_state & L4_VCPU_F_HANDLING_SIGNAL) && (l4ertl_vcpu->saved_state & L4_VCPU_F_UNFINISHED_SIGNAL)) {
-    printf("current_thread 0x%x\n", (unsigned long)current_thread);
-    printf("sp 0x%x\n", current_thread->signal_kregs.ARM_sp);
-    printf("pc 0x%x\n", current_thread->signal_kregs.ARM_pc);
-    printf("lr 0x%x\n", current_thread->signal_kregs.ARM_lr);
-/*    printf("fp 0x%x\n", current_thread->signal_kregs.ARM_r10);
-    printf("r9 0x%x\n", current_thread->signal_kregs.ARM_r9);
-    printf("r8 0x%x\n", current_thread->signal_kregs.ARM_r8);
-    printf("r7 0x%x\n", current_thread->signal_kregs.ARM_r7);
-    printf("r6 0x%x\n", current_thread->signal_kregs.ARM_r6);
-    printf("r5 0x%x\n", current_thread->signal_kregs.ARM_r5);
-    printf("r4 0x%x\n", current_thread->signal_kregs.ARM_r4);
-*/
-    l4ertl_vcpu->saved_state = l4ertl_vcpu->saved_state & (~L4_VCPU_F_UNFINISHED_SIGNAL);
-
-    asm volatile (
-      "pop {r4, r5, r6, r7, r8, r9, sl, fp, lr}		\n\t"
-      "mov r4, %[newr4]					\n\t"
-      "mov r5, %[newr5]					\n\t"
-      "mov r6, %[newr6]					\n\t"
-      "mov r7, %[newr7]					\n\t"
-      "mov r8, %[newr8]					\n\t"
-      "mov r9, %[newr9]					\n\t"
-      "mov sl, %[newr10]				\n\t"
-      "mov fp, %[newr11]				\n\t"
-      "mov lr, %[newlr]					\n\t"
-      "mov pc, lr					\n\t"
-      ::[newlr]"r"(current_thread->signal_kregs.ARM_lr),
-       [newr11]"r"(current_thread->signal_kregs.ARM_r11),
-       [newr10]"r"(current_thread->signal_kregs.ARM_r10),
-       [newr9]"r"(current_thread->signal_kregs.ARM_r9),
-       [newr8]"r"(current_thread->signal_kregs.ARM_r8),
-       [newr7]"r"(current_thread->signal_kregs.ARM_r7),
-       [newr6]"r"(current_thread->signal_kregs.ARM_r6),
-       [newr5]"r"(current_thread->signal_kregs.ARM_r5),
-       [newr4]"r"(current_thread->signal_kregs.ARM_r4));
-
-  }
-  printf("end of do signal.\n");
 }

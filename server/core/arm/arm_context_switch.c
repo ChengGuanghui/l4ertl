@@ -17,7 +17,6 @@
 //void context_switch (pthread_t new_thread, pthread_t *current)
 void context_switch_to (pthread_t new_thread)
 {
-  printf("old_thread:0x%x state:%d  current_thread:0x%x state:%d\n", (unsigned long)current_thread, GET_THREAD_STATE(current_thread), (unsigned long)new_thread, GET_THREAD_STATE(new_thread));
   int disable = 0;
   unsigned int sp;
   if(l4ertl_vcpu->state & L4_VCPU_F_IRQ)
@@ -265,7 +264,7 @@ void context_switch_to (pthread_t new_thread)
   printf("M 12 0x%x\n", *((unsigned long *)(current_thread->kregs.ARM_sp + 12 * 4)));
 
 #endif
-    //printf("switch to kernel mode lr:0x%x fp:0x%x r10:0x%x r9:0x%x r8:0x%x r7:0x%x r6:0x%x r5:0x%x r4:0x%x r3:0x%x r2:0x%x r1:0x%x r0:0x%x\n", lr, fp, r10, r9, r8, r7, r6, r5, r4, r3, r2, r1, r0);
+    dbprintf("switch to kernel mode lr:0x%x fp:0x%x r10:0x%x r9:0x%x r8:0x%x r7:0x%x r6:0x%x r5:0x%x r4:0x%x r3:0x%x r2:0x%x r1:0x%x r0:0x%x\n", lr, fp, r10, r9, r8, r7, r6, r5, r4, r3, r2, r1, r0);
   }
 
 }
@@ -274,14 +273,20 @@ void vcpu_to_pthread(l4_vcpu_state_t *vcpu, pthread_t thread)
 {
   if(vcpu->saved_state & L4_VCPU_F_USER_MODE)
     vcpu_to_ptregs(vcpu, (struct pt_regs *)(&thread->entry_uregs));
-  else {printf("vcpu_to_pthread entry_kregs.\n");
-    vcpu_to_ptregs(vcpu, (struct pt_regs *)(&thread->entry_kregs));}
+  else {
+    dbprintf("vcpu_to_pthread entry_kregs begin.\n");
+    vcpu_to_ptregs(vcpu, (struct pt_regs *)(&thread->entry_kregs));
+    dbprintf("vcpu_to_pthread entry_kregs end.\n");
+  }
 }
 
 void pthread_to_vcpu(l4_vcpu_state_t *vcpu, pthread_t thread)
 {
   if(thread->saved_cpsr & L4_VCPU_F_USER_MODE)
     ptregs_to_vcpu(vcpu, (struct pt_regs *)(&thread->entry_uregs));
-  else {printf("pthread_to_vcpu entry_kregs.\n");
-    ptregs_to_vcpu(vcpu, (struct pt_regs *)(&thread->entry_kregs));}
+  else {
+    dbprintf("pthread_to_vcpu entry_kregs begin.\n");
+    ptregs_to_vcpu(vcpu, (struct pt_regs *)(&thread->entry_kregs));
+    dbprintf("pthread_to_vcpu entry_kregs end.\n");
+  }
 }

@@ -1,0 +1,39 @@
+INTRODUCTION about l4ertl and code architecture
+
+   l4ertl is the virtualization of PaRTikle(eRTL) based on Fiasco.OC and now it works for ARM Pandaboard (OMAP4430).
+   First you need to download the l4re-snapshot from Fiasco.OC official website, then compile the l4re for OMAP4430 (Pandaboard). Then you can checkout l4ertl from git in the directory src/l4/pkg/. Finally l4ertl will be a normal package for L4Re and Fiasco although l4ertl is also an operating system . Now there are several pacages as following:
+  1)core.  this directory is ported directly from PaRTiKle source code and fixed something according to the virtualization. This directory also includes everything about L4eRTL(PaRTiKle) kernel, loader, timer driver and all related with a real-time operating system.
+  2)crt0.   an assembler script to start application
+  3)examples. directory includes the l4ertl(PaRTiKle) application. In this virtualized operating system application and kernel are seperated to be compiled and then merged together into an image.
+  4)Makefile
+  5)src nothing in this directory
+  6)ulibc.  small libc library for l4ertl(PaRTiKle) application
+  7)utils.  some legacy code from PaRTiKle source code
+
+
+STEPS: how to use
+   1)compile the kernel code. Go to the server/core directory execute command "make cleanall;make"
+   2)compile the application code. Go to the ulibc directory execute command "make clean;make" ; go to example directory execute command "make clean;make". Then you can generate an application named boot.elf. The copy the boot.elf to the directory l4re-snapshot/files/error_test. I know this step is a little bit strange but i don't have much time to configure it easily to use.
+   3)you should see the images directory with one script and one directory
+        run.sh :   you can put this script into the src/l4/ directory and execute it. Basically this script is available in my machine and probably you need to fix it in your machine.
+        conf   :  this is directory and in the src/l4 there is a conf directory
+            modules.list : you need to copy the content of this modules.list into the original modules.list
+            examples
+            |-- arm-omap4.devs
+            |-- l4ertl_omap4.cfg
+            |-- l4ertl_omap4.io
+                            you need to copy arm-omap4.devs, l4ertl_omap4.cfg and l4ertl_omap4.io into the original examples directory.
+
+        Finanlly, you can generate the final image to boot from pandaboard.
+
+STEPS: boot
+     the final image should be placed in the directory obj/l4/arm-omap/bin/arm_armv7a
+     whatever you use kermit or minicom, you can use serial console to download the image (bootstrap.raw) from pc to your board. then
+     go  0x81000000
+
+      Thanks.
+      cheng
+
+        
+   
+
